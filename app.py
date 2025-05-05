@@ -11,7 +11,6 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from pinecone import Pinecone
-from mangum import Mangum
 
 # Initialize FastAPI app and logging
 app = FastAPI(title="SHL Assessment Recommendation API")
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 INDEX_NAME = "shl-assessments"
-EMBEDDING_MODEL = "models/all-MiniLM-L6-v2"  # Updated to load from local directory
+EMBEDDING_MODEL = "models/all-MiniLM-L6-v2"
 ASSESSMENT_LINK_CSV_PATH = "finalassesment_link.csv"
 
 # Load environment variables
@@ -138,7 +137,14 @@ class RecommendationResponse(BaseModel):
 # Health Check Endpoint
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    try:
+        # Test Pinecone connection
+        stats = pc.Index(INDEX_NAME).describe_index_stats()
+        logger.info(f"Pinecone index stats: {stats}")
+        return {"status": "healthy"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 # Recommendation Endpoint
 @app.post("/recommend", response_model=RecommendationResponse)
@@ -148,14 +154,17 @@ async def recommend(request: QueryRequest):
         logger.info(f"Received query: {query}")
 
         # Step 1: Extract metadata using Gemini
+        logger.info("Invoking Gemini for metadata extraction")
         extraction_result = extract_chain.invoke({"query": query})
         logger.info(f"Raw extraction result: {extraction_result}")
 
         # Clean and parse the extracted metadata
         raw_text = extraction_result['text'].strip()
+        logger.info(f"Raw text from Gemini: {raw_text}")
         json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
         if json_match:
             extracted_metadata = json.loads(json_match.group())
+            logger.info(f"Parsed metadata: {extracted_metadata}")
         else:
             logger.warning(f"Failed to find valid JSON in: {raw_text}")
             extracted_metadata = {
@@ -187,6 +196,7 @@ async def recommend(request: QueryRequest):
         logger.info(f"Pinecone query: {pinecone_query}")
 
         # Step 3: Retrieve exactly 10 assessments from Pinecone
+        logger.info("Performing Pinecone similarity search")
         results = vector_store.similarity_search(pinecone_query, k=10)
         logger.info(f"Retrieved {len(results)} assessments")
 
@@ -211,8 +221,5 @@ async def recommend(request: QueryRequest):
         return {"recommended_assessments": recommended_assessments}
 
     except Exception as e:
-        logger.error(f"Error in recommendation endpoint: {e}")
+        logger.error(f"Error in recommendation endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-# Wrap the FastAPI app with Mangum for Vercel serverless
-handler = Mangum(app)
