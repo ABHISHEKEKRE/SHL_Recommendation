@@ -222,4 +222,8 @@ async def recommend(request: QueryRequest):
 
     except Exception as e:
         logger.error(f"Error in recommendation endpoint: {e}", exc_info=True)
+<<<<<<< HEAD
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+=======
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+>>>>>>> 1c086e086f798b5ca4c32b1451b08f0a6f05a16c
