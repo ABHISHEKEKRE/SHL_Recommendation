@@ -17,3 +17,4 @@ scikit-learn==1.5.2
 python-dotenv==1.0.1
 mangum==0.17.0
 huggingface-hub==0.25.1
+gunicorn==23.0.0  # Add gunicorn for Render
