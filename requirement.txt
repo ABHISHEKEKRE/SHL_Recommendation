@@ -4,7 +4,7 @@ pandas==2.2.2
 langchain-huggingface==0.1.0
 langchain-pinecone==0.2.5
 langchain-google-genai==2.0.0
-pinecone-client==5.0.1
+pinecone-client==4.1.0  # Downgrade to avoid deprecated plugin
 sentence-transformers==2.7.0
 pdfplumber==0.11.4
 python-docx==1.1.2
